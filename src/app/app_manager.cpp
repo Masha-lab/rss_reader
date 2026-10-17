@@ -1,5 +1,6 @@
 #include "app_manager.h"
 #include <curl/curl.h>
+#include "core/feed_parser_factory.h"
 
 size_t WriteCallback(void* contents, size_t size, size_t nmemb, std::string* userp){
     userp->append((char*)contents, size*nmemb);
@@ -31,6 +32,7 @@ namespace app{
         if (index >= feeds_.size()){
             return;
         }
+        std::lock_guard<std::mutex> lpck(mtx_);
 
         try{
             feeds_[index].status = LoadStatus::LOADING;
@@ -39,20 +41,22 @@ namespace app{
             if (!parser){
                 throw std::runtime_error("Unknow feed format");
             }
-            fedds_[index].feed = parser->parse(xml);
+            feeds_[index].feed = parser->parse(xml);
             feeds_[index].status = LoadStatus::OK;
         }catch (const std::exception& e){
             feeds_[index].status = LoadStatus::ERROR;
         }
     }
 
-    void AppManager::addSuscription(const std::string& url){
+    void AppManager::addSubscription(const std::string& url){
+        std::lock_guard<std::mutex> lock(mtx_);
         FeedState new_state;
         new_state.feed.url = url;
         feeds_.push_back(new_state);
     }
 
-    std::vector<FeedState> AppMahager::getFeeds() const{
+    std::vector<FeedState> AppManager::getFeeds() const{
+        std::lock_guard<std::mutex> lock(mtx_);
         return feeds_;
     }
 }

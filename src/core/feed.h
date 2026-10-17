@@ -24,4 +24,4 @@ struct Feed {
     std::string last_modified;
 };
 
-} // namespace core
+} 
