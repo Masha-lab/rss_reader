@@ -2,40 +2,35 @@
 
 #include <vector>
 #include <string>
-#include "../core/feed.h"
 #include <unordered_set>
-
 #include <mutex>
 #include <thread>
+#include "../core/feed.h"
 
-namespace app{
+namespace app {
 
-    enum class LoadStatus {IDLE, LOADING, OK, ERROR};
+enum class LoadStatus { IDLE, LOADING, OK, ERROR };
 
-    struct FeedState{
-        core::Feed feed;
-        LoadStatus status = LoadStatus::IDLE;
-    };
+struct FeedState {
+    core::Feed feed;
+    LoadStatus status = LoadStatus::IDLE;
+    std::string error_message;
+};
 
-    class AppManager {
+class AppManager {
+public:
+    void addSubscription(const std::string& url);
+    void loadFeed(size_t index);
+    std::vector<FeedState> getFeeds() const;
+    void startBackgroundLoading();
 
-        public:
+private:
+    std::string downloadUrl(const std::string& url);
 
-        void startBackgroundLoading();
+    mutable std::mutex mtx_;
+    std::vector<FeedState> feeds_;
+    std::unordered_set<std::string> read_guids_;
+    std::jthread loader_thread_;
+};
 
-        void loadFeed(size_t index);
-        void addSubscription(const std::string& url);
-
-        std::vector<FeedState> getFeeds() const;
-
-        private:
-
-        mutable std::mutex mtx_;
-        std::jthread loader_thread_;
-
-        std::string downloadUrl(const std::string& url);
-
-        std::vector<FeedState> feeds_;
-        std::unordered_set<std::string> read_guids_;
-    };
-}
+} 
