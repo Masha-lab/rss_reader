@@ -1,4 +1,5 @@
 #include "app_manager.h"
+#include "json_state_storage.h"
 #include <curl/curl.h>
 #include <iostream>
 #include <chrono>
@@ -150,6 +151,18 @@ void AppManager::startBackgroundLoading() {
             std::this_thread::sleep_for(std::chrono::minutes(15));
         }
     });
+}
+
+void AppManager::saveState(const std::string& filepath) {
+    std::lock_guard<std::mutex> lock(mtx_);
+    JsonStateStorage storage(filepath);
+    storage.save(feeds_);
+}
+
+void AppManager::loadState(const std::string& filepath) {
+    std::lock_guard<std::mutex> lock(mtx_);
+    JsonStateStorage storage(filepath);
+    feeds_ = storage.load();
 }
 
 } // namespace app

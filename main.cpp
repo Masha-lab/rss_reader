@@ -5,60 +5,37 @@
 #include "core/feed_parser_factory.h"
 
 int main() {
-    // Отключаем вывод об утечках системной библиотеки
     setenv("LSAN_OPTIONS", "detect_leaks=0", 1);
     
-    std::cout << "=== Тест 1: Парсинг RSS ===\n";
+    app::AppManager manager;
     
-    std::string rss_xml = R"(
-        <rss version="2.0">
-            <channel>
-                <title>Тестовая лента</title>
-                <item>
-                    <title>Новость 1</title>
-                    <link>https://example.com/1</link>
-                    <description>Описание первой новости</description>
-                </item>
-                <item>
-                    <title>Новость 2</title>
-                    <link>https://example.com/2</link>
-                    <description>Описание второй новости</description>
-                </item>
-            </channel>
-        </rss>
-    )";
+    // Загружаем предыдущее состояние
+    manager.loadState("state.json");
     
-    auto parser = core::FeedParserFactory::create(rss_xml);
-    if (parser) {
-        auto feed = parser->parse(rss_xml);
-        std::cout << "Название: " << feed.title << "\n";
-        std::cout << "Статей: " << feed.items.size() << "\n";
-        for (const auto& item : feed.items) {
-            std::cout << "  - " << item.title << "\n";
-        }
-    } else {
-        std::cout << "Ошибка: парсер не создан\n";
+    // Если лент нет — добавляем тестовую
+    auto feeds = manager.getFeeds();
+    if (feeds.empty()) {
+        std::cout << "Добавляем тестовую ленту...\n";
+        manager.addSubscription("https://rss.nytimes.com/services/xml/rss/nyt/HomePage.xml");
     }
     
-    std::cout << "\n=== Тест 2: HTML-to-Text ===\n";
+    std::cout << "Загружаем ленты...\n";
+    for (size_t i = 0; i < manager.getFeeds().size(); ++i) {
+        manager.loadFeed(i);
+    }
     
-    std::string html = R"(
-        <div>
-            <h1>Заголовок статьи</h1>
-            <p>Это первый абзац с <a href="https://example.com">ссылкой</a>.</p>
-            <ul>
-                <li>Пункт 1</li>
-                <li>Пункт 2</li>
-            </ul>
-        </div>
-    )";
+    // Сохраняем состояние
+    manager.saveState("state.json");
     
-    core::HtmlToTextConverter converter;
-    auto result = converter.convert(html);
-    std::cout << result.text << "\n";
-    
-    std::cout << "\n=== Тест 3: Загрузка по сети (опционально) ===\n";
-    std::cout << "Если хочешь протестировать сеть, раскомментируй код в main.cpp\n";
+    // Выводим результат
+    feeds = manager.getFeeds();
+    for (const auto& state : feeds) {
+        std::cout << "\nURL: " << state.feed.url << "\n";
+        std::cout << "Статус: " << static_cast<int>(state.status) << "\n";
+        std::cout << "Название: " << state.feed.title << "\n";
+        std::cout << "Статей: " << state.feed.items.size() << "\n";
+        std::cout << "ETag: " << state.feed.etag << "\n";
+    }
     
     return 0;
 }

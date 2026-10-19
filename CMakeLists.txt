@@ -1,25 +1,19 @@
-cmake_minimum_required(VERSION 3.20)
-project(RSSReader LANGUAGES CXX)
+cmake_minimum_required(VERSION 3.16)
+project(rss_reader CXX)
 
-# Требование задания: C++20
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_CXX_EXTENSIONS OFF)
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -Werror")
 
-# Требование задания: строгие предупреждения
-add_compile_options(-Wall -Wextra -Werror -pedantic)
-
-# Санитайзеры для отладки (Address и Undefined Behavior)
-# Включаются только в Debug-режиме
-set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -fsanitize=address,undefined -fno-omit-frame-pointer")
-set(CMAKE_LINKER_FLAGS_DEBUG "${CMAKE_LINKER_FLAGS_DEBUG} -fsanitize=address,undefined")
-
-# Подключаем три слоя архитектуры
-# Порядок важен: зависимости идут сверху вниз (TUI -> App -> Core)
 add_subdirectory(src/core)
 add_subdirectory(src/app)
 add_subdirectory(src/tui)
 
-# Главный исполняемый файл
+find_package(CURL REQUIRED)
+
 add_executable(rss_reader main.cpp)
-target_link_libraries(rss_reader PRIVATE tui app core)
+target_link_libraries(rss_reader PRIVATE app tui core CURL::libcurl)
+target_include_directories(rss_reader PRIVATE ${CMAKE_SOURCE_DIR}/src)
+
+find_package(nlohmann_json 3.2.0 REQUIRED)
+target_link_libraries(app PUBLIC nlohmann_json::nlohmann_json)

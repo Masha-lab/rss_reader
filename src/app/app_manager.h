@@ -5,17 +5,12 @@
 #include <unordered_set>
 #include <mutex>
 #include <thread>
+#include <memory>
 #include "../core/feed.h"
+#include "feed_state.h"
+#include "state_storage.h"
 
 namespace app {
-
-enum class LoadStatus { IDLE, LOADING, OK, ERROR };
-
-struct FeedState {
-    core::Feed feed;
-    LoadStatus status = LoadStatus::IDLE;
-    std::string error_message;
-};
 
 class AppManager {
 public:
@@ -23,6 +18,8 @@ public:
     void loadFeed(size_t index);
     std::vector<FeedState> getFeeds() const;
     void startBackgroundLoading();
+    void saveState(const std::string& filepath);
+    void loadState(const std::string& filepath);
 
 private:
     std::string downloadUrl(const std::string& url, std::string& out_etag, std::string& out_last_modified);
