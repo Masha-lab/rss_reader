@@ -9,6 +9,12 @@ size_t WriteCallback(void* contents, size_t size, size_t nmemb, std::string* use
     return size * nmemb;
 }
 
+size_t HeaderCallback(char* buffer, size_t size, size_t nitems, std::string* userdata) {
+    std::string header(buffer, size * nitems);
+    *userdata += header;
+    return size * nitems;
+}
+
 namespace app {
 
 void AppManager::addSubscription(const std::string& url) {
@@ -18,58 +24,109 @@ void AppManager::addSubscription(const std::string& url) {
     feeds_.push_back(new_state);
 }
 
-std::string AppManager::downloadUrl(const std::string& url) {
+std::string AppManager::downloadUrl(const std::string& url, std::string& out_etag, std::string& out_last_modified) {
     std::cerr << "[DEBUG] Скачиваю: " << url << "\n";
-    
+
     CURL* curl = curl_easy_init();
     if (!curl) {
         throw std::runtime_error("curl_easy_init failed");
     }
-    
+
     std::string readBuffer;
+    std::string headerBuffer;
+
     curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallback);
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, &readBuffer);
+    curl_easy_setopt(curl, CURLOPT_HEADERFUNCTION, HeaderCallback);
+    curl_easy_setopt(curl, CURLOPT_HEADERDATA, &headerBuffer);
     curl_easy_setopt(curl, CURLOPT_USERAGENT, "Mozilla/5.0 (compatible; RSSReader/1.0)");
     curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
     curl_easy_setopt(curl, CURLOPT_TIMEOUT, 10L);
-    
-    CURLcode res = curl_easy_perform(curl);
-    curl_easy_cleanup(curl);
-    
-    if (res != CURLE_OK) {
-        std::string err = curl_easy_strerror(res);
-        std::cerr << "[DEBUG] Ошибка curl: " << err << "\n";
-        throw std::runtime_error(err);
+
+    struct curl_slist* headers = nullptr;
+    if (!out_etag.empty()) {
+        std::string etag_header = "If-None-Match: " + out_etag;
+        headers = curl_slist_append(headers, etag_header.c_str());
     }
-    
-    std::cerr << "[DEBUG] Скачано байт: " << readBuffer.size() << "\n";
+    if (!out_last_modified.empty()) {
+        std::string lm_header = "If-Modified-Since: " + out_last_modified;
+        headers = curl_slist_append(headers, lm_header.c_str());
+    }
+    if (headers) {
+        curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
+    }
+
+    CURLcode res = curl_easy_perform(curl);
+    long http_code = 0;
+    curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_code);
+
+    curl_slist_free_all(headers);
+    curl_easy_cleanup(curl);
+
+    if (res != CURLE_OK) {
+        throw std::runtime_error(curl_easy_strerror(res));
+    }
+
+    auto findHeaderVal = [&](const std::string& name) -> std::string {
+        size_t pos = headerBuffer.find(name + ":");
+        if (pos == std::string::npos) return "";
+        size_t end = headerBuffer.find("\r\n", pos);
+        if (end == std::string::npos) end = headerBuffer.length();
+        std::string val = headerBuffer.substr(pos + name.length() + 1, end - pos - name.length() - 1);
+        while (!val.empty() && val.front() == ' ') val.erase(val.begin());
+        while (!val.empty() && val.back() == ' ') val.pop_back();
+        return val;
+    };
+
+    out_etag = findHeaderVal("ETag");
+    out_last_modified = findHeaderVal("Last-Modified");
+
+    if (http_code == 304) {
+        std::cerr << "[DEBUG] Лента не изменилась (304 Not Modified)\n";
+        return "";
+    }
+
+    std::cerr << "[DEBUG] Скачано байт: " << readBuffer.size() << ", ETag: " << out_etag << "\n";
     return readBuffer;
 }
 
 void AppManager::loadFeed(size_t index) {
     std::lock_guard<std::mutex> lock(mtx_);
-    
+
     if (index >= feeds_.size()) {
         std::cerr << "[DEBUG] Неверный индекс: " << index << "\n";
         return;
     }
-    
+
     try {
         feeds_[index].status = LoadStatus::LOADING;
         std::cerr << "[DEBUG] Загружаю ленту " << index << "\n";
-        
-        std::string xml = downloadUrl(feeds_[index].feed.url);
-        
+
+        std::string current_etag = feeds_[index].feed.etag;
+        std::string current_lm = feeds_[index].feed.last_modified;
+
+        std::string xml = downloadUrl(feeds_[index].feed.url, current_etag, current_lm);
+
+        if (xml.empty() && !current_etag.empty()) {
+            feeds_[index].feed.etag = current_etag;
+            feeds_[index].feed.last_modified = current_lm;
+            feeds_[index].status = LoadStatus::OK;
+            std::cerr << "[DEBUG] Кэш сработал, статей: " << feeds_[index].feed.items.size() << "\n";
+            return;
+        }
+
         auto parser = core::FeedParserFactory::create(xml);
         if (!parser) {
             throw std::runtime_error("Unknown feed format");
         }
-        
+
         feeds_[index].feed = parser->parse(xml);
+        feeds_[index].feed.etag = current_etag;
+        feeds_[index].feed.last_modified = current_lm;
         feeds_[index].status = LoadStatus::OK;
         std::cerr << "[DEBUG] Успех! Статей: " << feeds_[index].feed.items.size() << "\n";
-        
+
     } catch (const std::exception& e) {
         feeds_[index].status = LoadStatus::ERROR;
         feeds_[index].error_message = e.what();
@@ -95,4 +152,4 @@ void AppManager::startBackgroundLoading() {
     });
 }
 
-} 
+} // namespace app

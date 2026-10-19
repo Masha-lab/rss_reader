@@ -25,7 +25,7 @@ public:
     void startBackgroundLoading();
 
 private:
-    std::string downloadUrl(const std::string& url);
+    std::string downloadUrl(const std::string& url, std::string& out_etag, std::string& out_last_modified);
 
     mutable std::mutex mtx_;
     std::vector<FeedState> feeds_;
@@ -33,4 +33,4 @@ private:
     std::jthread loader_thread_;
 };
 
-} 
+} // namespace app
