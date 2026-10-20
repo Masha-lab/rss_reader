@@ -23,22 +23,29 @@ private:
     core::HtmlToTextConverter converter_;
     app::KeyConfig key_config_;
     
-    enum class Screen { FEEDS, ARTICLES, ARTICLE };
+    enum class Screen { FEEDS, ARTICLES, ARTICLE, SEARCH };
     Screen current_screen_ = Screen::FEEDS;
     
     size_t selected_feed_idx_ = 0;
     size_t selected_article_idx_ = 0;
+    size_t selected_search_idx_ = 0; // Отдельный индекс для навигации по результатам поиска
     
     // Кэш для конвертированного текста статьи
     std::string cached_article_text_;
     std::vector<std::string> cached_article_links_;
     bool cache_valid_ = false;
     
+    // Поле поиска
+    std::string search_query_;
+    std::vector<size_t> search_results_; // Индексы найденных статей
+    
     ftxui::Element draw_feeds_screen();
     ftxui::Element draw_articles_screen();
     ftxui::Element draw_article_screen();
+    ftxui::Element draw_search_screen();
     bool handle_event(ftxui::Event event);
     void update_article_cache();
+    void perform_search();
 };
 
 } // namespace tui
