@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+  <channel>
+    <title>Лента со сложным HTML</title>
+    <link>https://example.com</link>
+    <description>Лента для проверки отрисовки HTML (требования 33 и 34).</description>
+    <item>
+      <title>Статья с богатым форматированием</title>
+      <link>https://example.com/rich</link>
+      <description>
+        <![CDATA[
+        <h1>Главный заголовок статьи</h1>
+        <p>Это обычный абзац с <b>жирным текстом</b> и <i>курсивом</i>. Также здесь есть <strong>важное выделение</strong>.</p>
+        
+        <h2>Списки</h2>
+        <p>Маркированный список:</p>
+        <ul>
+            <li>Первый пункт списка</li>
+            <li>Второй пункт списка</li>
+            <li>Третий пункт списка</li>
+        </ul>
+        
+        <p>Нумерованный список:</p>
+        <ol>
+            <li>Шаг первый</li>
+            <li>Шаг второй</li>
+            <li>Шаг третий</li>
+        </ol>
+        
+        <h2>Цитата</h2>
+        <blockquote>
+            <p>Это пример цитаты из какого-то источника. Она должна выделяться визуально.</p>
+        </blockquote>
+        
+        <h2>Ссылки</h2>
+        <p>Ниже приведены полезные ссылки для проверки открытия по номеру сноски:</p>
+        <ul>
+            <li>Посетите <a href="https://example.com/link1">первый сайт</a> для подробностей.</li>
+            <li>Или почитайте <a href="https://example.com/link2">вторую статью</a>.</li>
+            <li>А также <a href="https://example.com/link3">третий ресурс</a>.</li>
+        </ul>
+        ]]>
+      </description>
+      <guid>rich-html-item-1</guid>
+    </item>
+  </channel>
+</rss>

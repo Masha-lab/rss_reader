@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <title>Тестовая Atom лента</title>
+  <link href="https://example.com/atom"/>
+  <id>urn:uuid:atom-feed-1</id>
+  <entry>
+    <title>Atom статья 1</title>
+    <link href="https://example.com/atom/1"/>
+    <summary>Краткое содержание первой Atom статьи.</summary>
+    <id>urn:uuid:atom-entry-1</id>
+  </entry>
+  <entry>
+    <title>Atom статья 2</title>
+    <link href="https://example.com/atom/2"/>
+    <summary>Краткое содержание второй Atom статьи.</summary>
+    <id>urn:uuid:atom-entry-2</id>
+  </entry>
+</feed>

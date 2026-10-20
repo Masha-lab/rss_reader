@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+  <channel>
+    <title>Сломанная лента</title>
+    <!-- Отсутствует закрывающий тег channel и rss, а также item некорректен -->
+    <item>
+      <title>Новость без описания и guid
+      <link>https://example.com/broken
+  </channel>
