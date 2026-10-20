@@ -43,7 +43,9 @@ std::string AppManager::downloadUrl(const std::string& url, std::string& out_eta
     curl_easy_setopt(curl, CURLOPT_HEADERDATA, &headerBuffer);
     curl_easy_setopt(curl, CURLOPT_USERAGENT, "Mozilla/5.0 (compatible; RSSReader/1.0)");
     curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
-    curl_easy_setopt(curl, CURLOPT_TIMEOUT, 10L);
+    curl_easy_setopt(curl, CURLOPT_TIMEOUT, 30L);
+    curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0L);
+    curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 0L);
 
     struct curl_slist* headers = nullptr;
     if (!out_etag.empty()) {
@@ -102,10 +104,11 @@ void AppManager::loadFeed(size_t index) {
 
     try {
         feeds_[index].status = LoadStatus::LOADING;
-        std::cerr << "[DEBUG] Загружаю ленту " << index << "\n";
+        std::cerr << "[DEBUG] Загружаю ленту " << index << ", URL: " << feeds_[index].feed.url << "\n";
 
         std::string current_etag = feeds_[index].feed.etag;
         std::string current_lm = feeds_[index].feed.last_modified;
+        std::string current_url = feeds_[index].feed.url;  // сохраняем URL до парсинга
 
         std::string xml = downloadUrl(feeds_[index].feed.url, current_etag, current_lm);
 
@@ -122,7 +125,9 @@ void AppManager::loadFeed(size_t index) {
             throw std::runtime_error("Unknown feed format");
         }
 
-        feeds_[index].feed = parser->parse(xml);
+        auto parsed_feed = parser->parse(xml);
+        parsed_feed.url = current_url;  // восстанавливаем URL после парсинга
+        feeds_[index].feed = parsed_feed;
         feeds_[index].feed.etag = current_etag;
         feeds_[index].feed.last_modified = current_lm;
         feeds_[index].status = LoadStatus::OK;

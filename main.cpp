@@ -1,8 +1,9 @@
 #include <iostream>
 #include <cstdlib>
+#include <thread>
+#include <chrono>
 #include "app/app_manager.h"
-#include "core/html_to_text_converter.h"
-#include "core/feed_parser_factory.h"
+#include "tui/tui_app.h"
 
 int main() {
     setenv("LSAN_OPTIONS", "detect_leaks=0", 1);
@@ -19,6 +20,7 @@ int main() {
         manager.addSubscription("https://rss.nytimes.com/services/xml/rss/nyt/HomePage.xml");
     }
     
+    // Загружаем ленты вручную (ждем завершения)
     std::cout << "Загружаем ленты...\n";
     for (size_t i = 0; i < manager.getFeeds().size(); ++i) {
         manager.loadFeed(i);
@@ -27,15 +29,9 @@ int main() {
     // Сохраняем состояние
     manager.saveState("state.json");
     
-    // Выводим результат
-    feeds = manager.getFeeds();
-    for (const auto& state : feeds) {
-        std::cout << "\nURL: " << state.feed.url << "\n";
-        std::cout << "Статус: " << static_cast<int>(state.status) << "\n";
-        std::cout << "Название: " << state.feed.title << "\n";
-        std::cout << "Статей: " << state.feed.items.size() << "\n";
-        std::cout << "ETag: " << state.feed.etag << "\n";
-    }
+    std::cout << "Запуск TUI...\n";
+    tui::TuiApp app(manager);
+    app.run();
     
     return 0;
 }
