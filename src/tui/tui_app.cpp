@@ -1,4 +1,5 @@
 #include "tui_app.h"
+#include "tui_load_observer.h"
 #include <iostream>
 #include <sstream>
 
@@ -41,7 +42,6 @@ Element TuiApp::draw_feeds_screen() {
         list.push_back(text("Нет подписок") | dim);
     }
     
-    // Показываем ошибку, если есть
     Elements footer;
     if (!feeds.empty() && feeds[selected_feed_idx_].status == app::LoadStatus::ERROR) {
         footer.push_back(text("Ошибка: " + feeds[selected_feed_idx_].error_message) | color(Color::Red));
@@ -170,6 +170,10 @@ bool TuiApp::handle_event(Event event) {
 
 void TuiApp::run() {
     auto screen = ScreenInteractive::Fullscreen();
+    
+    // Регистрируем наблюдателя для обновления экрана при фоновой загрузке
+    auto observer = std::make_shared<TuiLoadObserver>(screen);
+    manager_.addObserver(observer);
     
     auto renderer = Renderer([&] {
         switch (current_screen_) {

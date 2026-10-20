@@ -95,49 +95,58 @@ std::string AppManager::downloadUrl(const std::string& url, std::string& out_eta
 }
 
 void AppManager::loadFeed(size_t index) {
-    std::lock_guard<std::mutex> lock(mtx_);
+    bool success = false;
+    std::string error_msg;
+    
+    {
+        std::lock_guard<std::mutex> lock(mtx_);
 
-    if (index >= feeds_.size()) {
-        std::cerr << "[DEBUG] Неверный индекс: " << index << "\n";
-        return;
-    }
-
-    try {
-        feeds_[index].status = LoadStatus::LOADING;
-        std::cerr << "[DEBUG] Загружаю ленту " << index << ", URL: " << feeds_[index].feed.url << "\n";
-
-        std::string current_etag = feeds_[index].feed.etag;
-        std::string current_lm = feeds_[index].feed.last_modified;
-        std::string current_url = feeds_[index].feed.url;  // сохраняем URL до парсинга
-
-        std::string xml = downloadUrl(feeds_[index].feed.url, current_etag, current_lm);
-
-        if (xml.empty() && !current_etag.empty()) {
-            feeds_[index].feed.etag = current_etag;
-            feeds_[index].feed.last_modified = current_lm;
-            feeds_[index].status = LoadStatus::OK;
-            std::cerr << "[DEBUG] Кэш сработал, статей: " << feeds_[index].feed.items.size() << "\n";
+        if (index >= feeds_.size()) {
+            std::cerr << "[DEBUG] Неверный индекс: " << index << "\n";
             return;
         }
 
-        auto parser = core::FeedParserFactory::create(xml);
-        if (!parser) {
-            throw std::runtime_error("Unknown feed format");
+        try {
+            feeds_[index].status = LoadStatus::LOADING;
+            std::cerr << "[DEBUG] Загружаю ленту " << index << ", URL: " << feeds_[index].feed.url << "\n";
+
+            std::string current_etag = feeds_[index].feed.etag;
+            std::string current_lm = feeds_[index].feed.last_modified;
+            std::string current_url = feeds_[index].feed.url;
+
+            std::string xml = downloadUrl(feeds_[index].feed.url, current_etag, current_lm);
+
+            if (xml.empty() && !current_etag.empty()) {
+                feeds_[index].feed.etag = current_etag;
+                feeds_[index].feed.last_modified = current_lm;
+                feeds_[index].status = LoadStatus::OK;
+                std::cerr << "[DEBUG] Кэш сработал, статей: " << feeds_[index].feed.items.size() << "\n";
+                success = true;
+            } else {
+                auto parser = core::FeedParserFactory::create(xml);
+                if (!parser) {
+                    throw std::runtime_error("Unknown feed format");
+                }
+
+                auto parsed_feed = parser->parse(xml);
+                parsed_feed.url = current_url;
+                feeds_[index].feed = parsed_feed;
+                feeds_[index].feed.etag = current_etag;
+                feeds_[index].feed.last_modified = current_lm;
+                feeds_[index].status = LoadStatus::OK;
+                std::cerr << "[DEBUG] Успех! Статей: " << feeds_[index].feed.items.size() << "\n";
+                success = true;
+            }
+        } catch (const std::exception& e) {
+            feeds_[index].status = LoadStatus::ERROR;
+            feeds_[index].error_message = e.what();
+            error_msg = e.what();
+            std::cerr << "[DEBUG] Ошибка: " << e.what() << "\n";
         }
-
-        auto parsed_feed = parser->parse(xml);
-        parsed_feed.url = current_url;  // восстанавливаем URL после парсинга
-        feeds_[index].feed = parsed_feed;
-        feeds_[index].feed.etag = current_etag;
-        feeds_[index].feed.last_modified = current_lm;
-        feeds_[index].status = LoadStatus::OK;
-        std::cerr << "[DEBUG] Успех! Статей: " << feeds_[index].feed.items.size() << "\n";
-
-    } catch (const std::exception& e) {
-        feeds_[index].status = LoadStatus::ERROR;
-        feeds_[index].error_message = e.what();
-        std::cerr << "[DEBUG] Ошибка: " << e.what() << "\n";
-    }
+    } // <-- мьютекс освобождается ЗДЕСЬ
+    
+    // Уведомляем наблюдателей ПОСЛЕ освобождения мьютекса
+    notifyObservers(index, success, error_msg);
 }
 
 std::vector<FeedState> AppManager::getFeeds() const {
@@ -168,6 +177,35 @@ void AppManager::loadState(const std::string& filepath) {
     std::lock_guard<std::mutex> lock(mtx_);
     JsonStateStorage storage(filepath);
     feeds_ = storage.load();
+}
+
+void AppManager::addObserver(std::shared_ptr<ILoadObserver> observer) {
+    std::lock_guard<std::mutex> lock(mtx_);
+    observers_.push_back(observer);
+}
+
+void AppManager::removeObserver(std::shared_ptr<ILoadObserver> observer) {
+    std::lock_guard<std::mutex> lock(mtx_);
+    observers_.erase(
+        std::remove_if(observers_.begin(), observers_.end(),
+            [&observer](const std::weak_ptr<ILoadObserver>& wp) {
+                auto sp = wp.lock();
+                return !sp || sp == observer;
+            }),
+        observers_.end()
+    );
+}
+
+void AppManager::notifyObservers(size_t feed_index, bool success, const std::string& error_message) {
+    std::lock_guard<std::mutex> lock(mtx_);
+    for (auto it = observers_.begin(); it != observers_.end(); ) {
+        if (auto sp = it->lock()) {
+            sp->onLoadComplete(feed_index, success, error_message);
+            ++it;
+        } else {
+            it = observers_.erase(it);
+        }
+    }
 }
 
 } // namespace app
