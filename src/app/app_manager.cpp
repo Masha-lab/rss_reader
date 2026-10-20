@@ -25,6 +25,11 @@ void AppManager::addSubscription(const std::string& url) {
     feeds_.push_back(new_state);
 }
 
+void AppManager::addFeed(const FeedState& state) {
+    std::lock_guard<std::mutex> lock(mtx_);
+    feeds_.push_back(state);
+}
+
 std::string AppManager::downloadUrl(const std::string& url, std::string& out_etag, std::string& out_last_modified) {
     std::cerr << "[DEBUG] Скачиваю: " << url << "\n";
 

@@ -1,5 +1,6 @@
 add_library(app STATIC
     app_manager.cpp
+    key_config.cpp
     json_state_storage.cpp
 )
 

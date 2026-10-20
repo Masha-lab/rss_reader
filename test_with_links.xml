@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+  <channel>
+    <title>Тестовая лента со ссылками</title>
+    <item>
+      <title>Статья с тремя ссылками</title>
+      <description>&lt;p&gt;Это тестовая статья.&lt;/p&gt;&lt;p&gt;Первая ссылка: &lt;a href="https://www.google.com"&gt;Google&lt;/a&gt;.&lt;/p&gt;&lt;p&gt;Вторая ссылка: &lt;a href="https://github.com"&gt;GitHub&lt;/a&gt;.&lt;/p&gt;&lt;p&gt;Третья ссылка: &lt;a href="https://stackoverflow.com"&gt;StackOverflow&lt;/a&gt;.&lt;/p&gt;</description>
+    </item>
+    <item>
+      <title>Статья без ссылок</title>
+      <description>&lt;p&gt;Просто текст без гиперссылок для проверки.&lt;/p&gt;</description>
+    </item>
+  </channel>
+</rss>

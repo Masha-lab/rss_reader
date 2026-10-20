@@ -1,0 +1,12 @@
+{
+    "quit": ["q", "Q"],
+    "down": ["j", "Down"],
+    "up": ["k", "Up"],
+    "select": ["Enter"],
+    "back": ["h", "Backspace"],
+    "open_link_1": ["1"],
+    "open_link_2": ["2"],
+    "open_link_3": ["3"],
+    "open_link_4": ["4"],
+    "open_link_5": ["5"]
+}

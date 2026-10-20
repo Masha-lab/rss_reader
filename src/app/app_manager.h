@@ -16,6 +16,7 @@ namespace app {
 class AppManager {
 public:
     void addSubscription(const std::string& url);
+    void addFeed(const FeedState& state);
     void loadFeed(size_t index);
     std::vector<FeedState> getFeeds() const;
     void startBackgroundLoading();
